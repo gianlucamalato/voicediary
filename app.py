@@ -15,10 +15,6 @@ notion_block_id = os.environ.get("notion_block_id")
 
 app = Flask(__name__)
 
-@app.route("/test/")
-def test():
-    return bot_token
-
 
 @app.route("/telegram/",methods = ['POST'])
 def telegram_message():
@@ -98,7 +94,7 @@ def telegram_message():
                             "paragraph": {
                                     "rich_text": [
                                                 
-                                                {"type": "text","text": {"content": " "+transcribed_text},'annotations':{'bold':False}},
+                                                {"type": "text","text": {"content": transcribed_text},'annotations':{'bold':False}},
                                                 ],
                                     "color": "default",
                                 }
