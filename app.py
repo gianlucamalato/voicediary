@@ -94,7 +94,7 @@ def telegram_message():
                             "paragraph": {
                                     "rich_text": [
                                                 
-                                                {"type": "text","text": {"content": transcribed_text},'annotations':{'bold':False}},
+                                                {"type": "text","text": {"content": transcribed_text.strip()},'annotations':{'bold':False}},
                                                 ],
                                     "color": "default",
                                 }
