@@ -110,7 +110,7 @@ def telegram_message():
     response = requests.patch(url, headers=headers, json=payload)
     chat_id = msg['message']['chat']['id']
     params = {'chat_id': chat_id}
-
+    print(response.text)
     # Send a Telegram message with the status
     if response.status_code == 200:
         params['text'] = 'Message added to the diary'    
