@@ -4,16 +4,40 @@ from  datetime import datetime
 import time
 import os
 import urllib.parse
-
+import re
 
 bot_token = os.environ.get("bot_token")
-allowed_username = os.environ.get("allowed_username")
+allowed_usernames = os.environ.get("allowed_usernames").split(",")
 assemblyai_api_key = os.environ.get("assemblyai_api_key")
-notion_api_key = os.environ.get("notion_api_key")
-notion_block_id = os.environ.get("notion_block_id")
 
 
 app = Flask(__name__)
+
+def parse_text(test_str):
+
+  regex = r"(?:più)?\s?(\d+)\s?(?:euro)?\s?e?\s?(\d*)\s?(?:centesimi)?"
+
+  #test_str = "2 euro e 20"
+
+
+
+
+  matches = re.finditer(regex, test_str, re.MULTILINE)
+
+  for matchNum, match in enumerate(matches, start=1):
+      
+      #print ("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
+      
+      units =  match.group(1)
+      cents = match.group(2)
+      #print(units,cents)
+  # Note: for Python 2.7 compatibility, use ur"" to prefix the regex and u"" to prefix the test string and substitution.
+  result = float(units)
+  if cents != "":
+    result += float(cents)/100
+  if match.group()[0:3] != 'più':
+    result *= -1
+  return test_str.replace(match.group(),"").strip(),str(result).replace(".",",")
 
 
 @app.route("/telegram/",methods = ['POST'])
@@ -26,7 +50,7 @@ def telegram_message():
         return 'No voice message'
     
     # Check if it has been sent from an allowed user
-    if msg['message']['from']['username'] != allowed_username:
+    if msg['message']['from']['username'] not in allowed_usernames:
         return 'User not allowed'
 
     # Get Telegram voice message file id
@@ -51,7 +75,8 @@ def telegram_message():
     }
 
     transcript_request = {
-            'audio_url': audio_url
+            'audio_url': audio_url,
+            "language_code": "it"
     }
 
     # Send voice message to Assembly AI
@@ -73,49 +98,8 @@ def telegram_message():
     
     transcribed_text = polling_response['text']
 
-    # Add to notion page
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    url = f"https://api.notion.com/v1/blocks/{notion_block_id}/children"
-
-    headers = {
-        "Accept": "application/json",
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {notion_api_key}"
-    }
-
-
-
-    payload = {'children':[
-                            {"type": "heading_1","heading_1":{"rich_text": [{"type": "text","text": {"content": ts}}]}},
-                            {
-                            "type": "paragraph",
-                            "paragraph": {
-                                    "rich_text": [
-                                                
-                                                {"type": "text","text": {"content": transcribed_text.strip()},'annotations':{'bold':False}},
-                                                ],
-                                    "color": "default",
-                                }
-                                },
-                            {'type':'divider','divider':{}}
-    ]}
-
-    # Add the transcribed message to Notion page
-    response = requests.patch(url, headers=headers, json=payload)
-    chat_id = msg['message']['chat']['id']
-    params = {'chat_id': chat_id}
-    print(response.text)
-    # Send a Telegram message with the status
-    if response.status_code == 200:
-        params['text'] = 'Message added to the diary'    
-
-    else:
-        params['text'] = 'Error adding message to the diary'   
-
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage?"+urllib.parse.urlencode(params)
-    requests.get(url)
+    descrizione,importo = parse_text(transcribed_text)
+    requests.post("https://hook.eu1.make.com/odaqe8jcw3njnbyalpvhpsfbmkqbauvs",json={'descrizione':descrizione,'importo':importo})
 
     return "OK"
     
